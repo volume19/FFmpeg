@@ -77,3 +77,4 @@ panic = "unwind"
 
 [profile.test]
 inherits = "dev"
+

@@ -51,7 +51,7 @@ impl Filter for ScaleFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use av_core::Plane;
+    use av_core::{Plane, PixelFormat};
 
     #[test]
     fn test_scale_filter() {

@@ -23,3 +23,7 @@ parallel = ["rayon"]
 [dev-dependencies]
 criterion.workspace = true
 hex = "0.4"
+
+[[bench]]
+name = "codec_bench"
+harness = false
