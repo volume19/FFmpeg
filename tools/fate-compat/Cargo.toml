@@ -1,0 +1,24 @@
+[package]
+name = "fate-compat"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "FATE-compatible test harness"
+
+[[bin]]
+name = "fate-compat"
+path = "src/main.rs"
+
+[dependencies]
+av-format = { path = "../../crates/av-format" }
+av-codec = { path = "../../crates/av-codec" }
+anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+hex = "0.4"
+
+[dev-dependencies]

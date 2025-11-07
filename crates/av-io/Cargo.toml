@@ -1,0 +1,20 @@
+[package]
+name = "av-io"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Async I/O abstractions for media files and streams"
+
+[dependencies]
+av-core = { path = "../av-core" }
+thiserror.workspace = true
+tokio.workspace = true
+async-trait.workspace = true
+bytes.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tokio-test = "0.4"

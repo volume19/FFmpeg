@@ -1,0 +1,79 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/av-core",
+    "crates/av-format",
+    "crates/av-codec",
+    "crates/av-filter",
+    "crates/av-swscale",
+    "crates/av-swresample",
+    "crates/av-hwaccel",
+    "crates/av-io",
+    "apps/rav",
+    "tools/fate-compat",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/volume19/FFmpeg"
+authors = ["FFmpeg Rust Contributors"]
+
+[workspace.dependencies]
+# Core dependencies shared across crates
+thiserror = "1.0"
+anyhow = "1.0"
+byteorder = "1.5"
+bytes = "1.5"
+bitstream-io = "2.2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Async runtime
+tokio = { version = "1.36", features = ["full"] }
+async-trait = "0.1"
+
+# Parallel processing
+rayon = "1.8"
+
+# SIMD and architecture-specific
+safe_arch = "0.7"
+wide = "0.7"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Testing
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest = "1.4"
+quickcheck = "1.0"
+
+# Fuzzing
+libfuzzer-sys = "0.4"
+
+# Math
+num-rational = "0.4"
+num-traits = "0.2"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = false
+debug = false
+panic = "abort"
+
+[profile.bench]
+inherits = "release"
+debug = true
+
+[profile.dev]
+opt-level = 0
+debug = true
+panic = "unwind"
+
+[profile.test]
+inherits = "dev"

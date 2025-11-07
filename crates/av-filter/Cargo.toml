@@ -1,0 +1,18 @@
+[package]
+name = "av-filter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Filter graph engine for audio and video processing"
+
+[dependencies]
+av-core = { path = "../av-core" }
+av-swscale = { path = "../av-swscale" }
+av-swresample = { path = "../av-swresample" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]

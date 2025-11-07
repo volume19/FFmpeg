@@ -1,0 +1,25 @@
+[package]
+name = "av-codec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Audio and video codec implementations"
+
+[dependencies]
+av-core = { path = "../av-core" }
+thiserror.workspace = true
+byteorder.workspace = true
+bitstream-io.workspace = true
+tracing.workspace = true
+rayon = { workspace = true, optional = true }
+
+[features]
+default = ["parallel"]
+parallel = ["rayon"]
+
+[dev-dependencies]
+criterion.workspace = true
+hex = "0.4"

@@ -47,3 +47,26 @@
 /libavfilter/vulkan/*.c
 /.*/
 !/.forgejo/
+
+# Rust-specific
+/target/
+Cargo.lock
+**/*.rs.bk
+
+# Rust test outputs
+*.yuv
+*.h264
+*.aac
+
+# Fuzzing
+fuzz/corpus/
+fuzz/artifacts/
+fuzz/target/
+
+# Benchmarks
+benches/baselines/
+
+# Coverage
+/coverage/
+*.profdata
+*.profraw

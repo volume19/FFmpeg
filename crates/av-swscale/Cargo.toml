@@ -1,0 +1,23 @@
+[package]
+name = "av-swscale"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Software pixel format conversion and scaling"
+
+[dependencies]
+av-core = { path = "../av-core" }
+thiserror.workspace = true
+tracing.workspace = true
+rayon = { workspace = true, optional = true }
+
+[features]
+default = ["parallel"]
+parallel = ["rayon"]
+simd = []
+
+[dev-dependencies]
+criterion.workspace = true

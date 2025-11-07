@@ -1,0 +1,17 @@
+[package]
+name = "av-swresample"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Software audio resampling and channel mixing"
+
+[dependencies]
+av-core = { path = "../av-core" }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
