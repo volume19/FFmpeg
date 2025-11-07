@@ -1,8 +1,9 @@
 //! MP4 demuxer implementation
 
 use super::box_reader::{read_box_header, skip_box};
+use super::moov_parser::{parse_moov, Track};
 use super::{FTYP, MDAT, MOOV};
-use av_core::{CodecType, Packet, StreamInfo, TimeBase};
+use av_core::{Dts, Packet, Pts, StreamInfo};
 use av_io::{AsyncReadExt, AsyncSeekExt, Source};
 use std::io::SeekFrom;
 
@@ -17,18 +18,25 @@ use std::io::SeekFrom;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let source = FileSource::open("video.mp4").await?;
-/// let demuxer = Mp4Demuxer::open(Box::new(source)).await?;
+/// let mut demuxer = Mp4Demuxer::open(Box::new(source)).await?;
 ///
 /// println!("Streams: {}", demuxer.streams().len());
+///
+/// while let Some(packet) = demuxer.read_packet().await? {
+///     println!("Read packet from stream {}", packet.stream_index);
+/// }
 /// # Ok(())
 /// # }
 /// ```
 pub struct Mp4Demuxer {
     source: Box<dyn Source>,
     streams: Vec<StreamInfo>,
-    moov_offset: u64,
+    tracks: Vec<Track>,
     mdat_offset: u64,
-    mdat_size: u64,
+
+    // Current read position
+    current_track: usize,
+    current_sample: Vec<usize>, // Sample index per track
 }
 
 impl Mp4Demuxer {
@@ -36,7 +44,6 @@ impl Mp4Demuxer {
     pub async fn open(mut source: Box<dyn Source>) -> Result<Self, std::io::Error> {
         let mut moov_offset = 0;
         let mut mdat_offset = 0;
-        let mut mdat_size = 0;
 
         // Scan for top-level boxes
         loop {
@@ -66,12 +73,10 @@ impl Mp4Demuxer {
                 }
                 MOOV => {
                     moov_offset = pos;
-                    // For now, skip moov parsing - will implement full parsing later
                     skip_box(&mut *source, &header).await?;
                 }
                 MDAT => {
                     mdat_offset = pos + header.header_size;
-                    mdat_size = header.payload_size();
                     skip_box(&mut *source, &header).await?;
                 }
                 _ => {
@@ -81,22 +86,29 @@ impl Mp4Demuxer {
             }
         }
 
-        // For Phase 1, create a stub stream
-        // In full implementation, this would parse moov/trak/mdia/stbl
-        let streams = vec![StreamInfo::new_video(
-            0,
-            CodecType::H264,
-            TimeBase::new(1, 90000),
-            1920,
-            1080,
-        )];
+        // Parse moov box to extract tracks
+        let tracks = if moov_offset > 0 {
+            parse_moov(&mut *source, moov_offset).await?
+        } else {
+            Vec::new()
+        };
+
+        // Convert tracks to stream info
+        let streams: Vec<StreamInfo> = tracks
+            .iter()
+            .enumerate()
+            .map(|(i, track)| track.to_stream_info(i))
+            .collect();
+
+        let current_sample = vec![0; tracks.len()];
 
         Ok(Self {
             source,
             streams,
-            moov_offset,
+            tracks,
             mdat_offset,
-            mdat_size,
+            current_track: 0,
+            current_sample,
         })
     }
 
@@ -105,27 +117,153 @@ impl Mp4Demuxer {
         &self.streams
     }
 
-    /// Read next packet (stub implementation for Phase 1)
+    /// Read next packet
     ///
-    /// Full implementation will:
-    /// - Parse stbl (sample table) for chunk/sample info
-    /// - Read samples from mdat
-    /// - Set PTS/DTS from stts/ctts tables
+    /// Reads samples from mdat using sample tables.
+    /// Returns None when all packets have been read.
     pub async fn read_packet(&mut self) -> Result<Option<Packet>, std::io::Error> {
-        // Stub: return None to indicate no more packets
-        // Full implementation in next phase
-        Ok(None)
+        // Find next track with available samples
+        let mut found_track = None;
+        for i in 0..self.tracks.len() {
+            let track_idx = (self.current_track + i) % self.tracks.len();
+            if self.current_sample[track_idx] < self.tracks[track_idx].sample_table.sample_count() {
+                found_track = Some(track_idx);
+                break;
+            }
+        }
+
+        let track_idx = match found_track {
+            Some(idx) => idx,
+            None => return Ok(None), // All tracks exhausted
+        };
+
+        let track = &self.tracks[track_idx];
+        let sample_idx = self.current_sample[track_idx];
+
+        // Get sample location (chunk + offset within chunk)
+        let (chunk_idx, sample_in_chunk) = track
+            .sample_table
+            .get_sample_location(sample_idx)
+            .ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Invalid sample location",
+                )
+            })?;
+
+        // Get chunk offset
+        let chunk_offset = track.sample_table.chunk_offsets.get(chunk_idx).copied().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid chunk offset",
+            )
+        })?;
+
+        // Calculate offset to this sample within the chunk
+        let mut offset_in_chunk = 0u64;
+        for i in 0..sample_in_chunk {
+            let prev_sample_idx = sample_idx - sample_in_chunk + i;
+            if let Some(size) = track.sample_table.sample_sizes.get(prev_sample_idx) {
+                offset_in_chunk += *size as u64;
+            }
+        }
+
+        let sample_size = track.sample_table.sample_sizes.get(sample_idx).copied().unwrap_or(0);
+
+        // Seek to sample position and read data
+        self.source
+            .seek(SeekFrom::Start(chunk_offset + offset_in_chunk))
+            .await?;
+
+        let mut data = vec![0u8; sample_size as usize];
+        self.source.read_exact(&mut data).await?;
+
+        // Calculate PTS from time-to-sample table
+        let mut pts_value = 0i64;
+        let mut samples_seen = 0usize;
+        for entry in &track.sample_table.time_to_samples {
+            if samples_seen + entry.sample_count as usize > sample_idx {
+                let samples_in_entry = sample_idx - samples_seen;
+                pts_value += samples_in_entry as i64 * entry.sample_delta as i64;
+                break;
+            }
+            pts_value += entry.sample_count as i64 * entry.sample_delta as i64;
+            samples_seen += entry.sample_count as usize;
+        }
+
+        // Check if keyframe
+        let keyframe = track.sample_table.is_sync_sample(sample_idx as u32);
+
+        // Create packet
+        let packet = Packet {
+            data,
+            pts: Some(Pts::new(pts_value)),
+            dts: Some(Dts::new(pts_value)), // For simplicity, assume DTS = PTS
+            duration: None,
+            stream_index: track_idx,
+            keyframe,
+        };
+
+        // Advance to next sample
+        self.current_sample[track_idx] += 1;
+        self.current_track = (track_idx + 1) % self.tracks.len();
+
+        Ok(Some(packet))
     }
 
-    /// Seek to a specific timestamp (stub for Phase 1)
-    pub async fn seek(&mut self, _pts: i64, _stream_index: usize) -> Result<(), std::io::Error> {
-        // Stub: seeking will be implemented using stss (sync sample) table
+    /// Seek to a specific timestamp (simplified implementation)
+    pub async fn seek(&mut self, pts: i64, stream_index: usize) -> Result<(), std::io::Error> {
+        if stream_index >= self.tracks.len() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "Invalid stream index",
+            ));
+        }
+
+        // For simplicity, find nearest keyframe before target PTS
+        let track = &self.tracks[stream_index];
+
+        // Reset to first sample for this track
+        self.current_sample[stream_index] = 0;
+
+        // Find sync sample (keyframe) closest to target PTS
+        // This is a simplified implementation
+        let mut target_sample = 0;
+        let mut current_pts = 0i64;
+
+        for (idx, entry) in track.sample_table.time_to_samples.iter().enumerate() {
+            let samples_in_entry = entry.sample_count as i64;
+            let pts_in_entry = samples_in_entry * entry.sample_delta as i64;
+
+            if current_pts + pts_in_entry > pts {
+                // Target is in this entry
+                let remaining_pts = pts - current_pts;
+                target_sample += (remaining_pts / entry.sample_delta as i64).max(0) as usize;
+                break;
+            }
+
+            current_pts += pts_in_entry;
+            target_sample += samples_in_entry as usize;
+        }
+
+        // Find nearest keyframe before target
+        if !track.sample_table.sync_samples.is_empty() {
+            for &sync_sample in track.sample_table.sync_samples.iter().rev() {
+                if (sync_sample as usize) <= target_sample {
+                    target_sample = sync_sample as usize - 1; // Convert to 0-based
+                    break;
+                }
+            }
+        }
+
+        self.current_sample[stream_index] = target_sample;
+
         Ok(())
     }
 
-    /// Get file duration in stream time base (stub for Phase 1)
+    /// Get file duration in first stream's time base
     pub fn duration(&self) -> Option<i64> {
-        None
+        self.tracks.first().map(|t| t.duration as i64)
     }
 }
 
@@ -164,8 +302,7 @@ mod tests {
         let source = MemorySource::new(data);
         let demuxer = Mp4Demuxer::open(Box::new(source)).await.unwrap();
 
-        // Stub stream should be created
-        assert_eq!(demuxer.streams().len(), 1);
-        assert_eq!(demuxer.streams()[0].codec, CodecType::H264);
+        // Should have no streams (moov is empty)
+        assert_eq!(demuxer.streams().len(), 0);
     }
 }

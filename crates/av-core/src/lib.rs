@@ -15,5 +15,5 @@ pub mod time;
 pub use error::{Error, Result};
 pub use frame::{Frame, Plane, PixelFormat, SampleFormat};
 pub use packet::Packet;
-pub use stream::{CodecType, StreamInfo};
+pub use stream::{CodecType, MediaType, StreamInfo};
 pub use time::{Dts, Pts, TimeBase};

@@ -5,8 +5,11 @@
 
 mod box_reader;
 mod demuxer;
+mod moov_parser;
+mod sample_table;
 
 pub use demuxer::Mp4Demuxer;
+pub(crate) use sample_table::SampleTable;
 
 /// MP4 box type (FourCC)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,6 +62,10 @@ pub const HDLR: BoxType = BoxType(*b"hdlr");
 pub const MDHD: BoxType = BoxType(*b"mdhd");
 pub const TKHD: BoxType = BoxType(*b"tkhd");
 pub const MVHD: BoxType = BoxType(*b"mvhd");
+pub const STSS: BoxType = BoxType(*b"stss");
+pub const VMHD: BoxType = BoxType(*b"vmhd");
+pub const SMHD: BoxType = BoxType(*b"smhd");
+pub const DINF: BoxType = BoxType(*b"dinf");
 
 /// MP4 box header
 #[derive(Debug)]
