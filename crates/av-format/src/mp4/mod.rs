@@ -5,10 +5,12 @@
 
 mod box_reader;
 mod demuxer;
+mod muxer;
 mod moov_parser;
 mod sample_table;
 
 pub use demuxer::Mp4Demuxer;
+pub use muxer::Mp4Muxer;
 pub(crate) use sample_table::SampleTable;
 
 /// MP4 box type (FourCC)
@@ -46,6 +48,7 @@ impl std::fmt::Display for BoxType {
 
 // Common MP4 box types
 pub const FTYP: BoxType = BoxType(*b"ftyp");
+pub const FREE: BoxType = BoxType(*b"free");
 pub const MOOV: BoxType = BoxType(*b"moov");
 pub const MDAT: BoxType = BoxType(*b"mdat");
 pub const TRAK: BoxType = BoxType(*b"trak");

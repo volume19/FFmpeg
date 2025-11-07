@@ -11,4 +11,4 @@ pub mod source;
 pub use source::{FileSource, MemorySource, Source};
 
 /// Re-export commonly used types
-pub use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt};
+pub use tokio::io::{AsyncRead, AsyncReadExt, AsyncSeek, AsyncSeekExt, AsyncWrite, AsyncWriteExt};
