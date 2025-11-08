@@ -4,7 +4,7 @@
 
 use av_codec::h264::{H264Decoder, Sps, Pps};
 use av_codec::h264::transform::{idct_4x4, idct_4x4_scalar};
-use av_codec::h264::simd::idct_4x4_simd;
+use av_codec::h264::simd::{idct_4x4_simd, interpolate_half_horizontal_simd, interpolate_half_vertical_simd};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn bench_h264_sps_parse(c: &mut Criterion) {
@@ -93,6 +93,45 @@ fn bench_idct_4x4_dispatch(c: &mut Criterion) {
     });
 }
 
+fn bench_motion_comp_horizontal_simd(c: &mut Criterion) {
+    // 16x16 block motion compensation (typical macroblock size)
+    let src = vec![128u8; 32 * 32];
+    let mut dst = vec![0u8; 16 * 16];
+
+    c.bench_function("h264_motion_comp_horizontal_simd", |b| {
+        b.iter(|| {
+            interpolate_half_horizontal_simd(
+                black_box(&src),
+                32,
+                0,
+                0,
+                black_box(&mut dst),
+                16,
+                16,
+            );
+        });
+    });
+}
+
+fn bench_motion_comp_vertical_simd(c: &mut Criterion) {
+    let src = vec![128u8; 32 * 32];
+    let mut dst = vec![0u8; 16 * 16];
+
+    c.bench_function("h264_motion_comp_vertical_simd", |b| {
+        b.iter(|| {
+            interpolate_half_vertical_simd(
+                black_box(&src),
+                32,
+                0,
+                0,
+                black_box(&mut dst),
+                16,
+                16,
+            );
+        });
+    });
+}
+
 criterion_group!(
     codec_benches,
     bench_h264_sps_parse,
@@ -100,7 +139,9 @@ criterion_group!(
     bench_h264_decoder_creation,
     bench_idct_4x4_scalar,
     bench_idct_4x4_simd,
-    bench_idct_4x4_dispatch
+    bench_idct_4x4_dispatch,
+    bench_motion_comp_horizontal_simd,
+    bench_motion_comp_vertical_simd
 );
 
 criterion_main!(codec_benches);

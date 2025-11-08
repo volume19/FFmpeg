@@ -184,7 +184,7 @@ fn copy_block(
 /// Half-pel horizontal interpolation (6-tap filter)
 ///
 /// Simplified implementation using averaging
-fn interpolate_half_horizontal(
+pub(crate) fn interpolate_half_horizontal(
     src: &[u8],
     src_stride: usize,
     x: usize,
@@ -207,7 +207,7 @@ fn interpolate_half_horizontal(
 /// Half-pel vertical interpolation (6-tap filter)
 ///
 /// Simplified implementation using averaging
-fn interpolate_half_vertical(
+pub(crate) fn interpolate_half_vertical(
     src: &[u8],
     src_stride: usize,
     x: usize,

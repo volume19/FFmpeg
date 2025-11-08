@@ -149,7 +149,7 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Frame memory layout validation
   - End-to-end demux + decode
 
-**Commits**: 4956959, 9a1be5d, ae76335, 8733463, 41a01ea (I-slice), bfe171a (P-slice), 9e02c00 (SIMD), bc2ae34 (deblock), d92f466 (B-types)
+**Commits**: 4956959, 9a1be5d, ae76335, 8733463, 41a01ea (I-slice), bfe171a (P-slice), 9e02c00 (SIMD IDCT), bc2ae34 (deblock), d92f466 (B-types), 51eb5f5 (B-slice)
 
 ### Pending (Phase 2 Completion)
 
@@ -207,7 +207,14 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Benchmarks: Scalar ~9.4ns, SIMD ~18.6ns (single block)
   - Note: SIMD overhead dominates for 4x4; benefits in batch processing
   - Infrastructure ready for larger transforms (8x8, 16x16)
-- ⏳ **Motion Compensation** (SSE2, NEON)
+- ✅ **Motion Compensation** (SSE2, NEON)
+  - Half-pel horizontal interpolation (SSE2: _mm_avg_epu8, NEON: vrhaddq_u8)
+  - Half-pel vertical interpolation (optimized for row-wise access)
+  - SIMD processes 16 pixels per iteration (128-bit registers)
+  - Scalar fallback for remaining pixels and non-SIMD platforms
+  - Benchmarks ready for 16x16 macroblock interpolation
+  - Expected speedup: 4x for typical 16x16 blocks
+  - Note: Quarter-pel and bilinear modes use scalar (SIMD pending)
 - ⏳ **Deblocking Filter SIMD** (SSE2, NEON) - scalar version complete
 - ⏳ **YUV Scaling** (AVX2, NEON)
 
