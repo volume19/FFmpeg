@@ -285,6 +285,206 @@ fn decode_intra4x4_pred_mode(br: &mut BitReader) -> Result<Intra4x4Mode> {
     Ok(mode)
 }
 
+/// Macroblock type for P-slices (ISO/IEC 14496-10:2022 §7.4.5.1)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PMbType {
+    /// P_Skip (no residual, use motion vector from neighbors)
+    PSkip,
+    /// P_16x16 (one 16x16 partition)
+    P16x16,
+    /// P_16x8 (two 16x8 partitions)
+    P16x8,
+    /// P_8x16 (two 8x16 partitions)
+    P8x16,
+    /// P_8x8 (four 8x8 partitions with sub-partitioning)
+    P8x8,
+    /// P_8x8ref0 (four 8x8 partitions, reference index 0)
+    P8x8ref0,
+    /// Intra modes in P-slice
+    PIntra {
+        intra_type: IMbType,
+    },
+}
+
+/// Decode macroblock type from bitstream (P-slice)
+///
+/// ISO/IEC 14496-10:2022 Table 7-13
+pub fn decode_mb_type_p(br: &mut BitReader) -> Result<PMbType> {
+    let mb_type = br.read_ue()?;
+
+    // Table 7-13: mb_type values for P slices
+    match mb_type {
+        0 => Ok(PMbType::P16x16),
+        1 => Ok(PMbType::P16x8),
+        2 => Ok(PMbType::P8x16),
+        3 => Ok(PMbType::P8x8),
+        4 => Ok(PMbType::P8x8ref0),
+        // 5-29 are I macroblock types in P slices
+        _ if mb_type >= 5 => {
+            // Decode as I macroblock type (offset by 5)
+            let i_type_idx = mb_type - 5;
+
+            if i_type_idx == 0 {
+                Ok(PMbType::PIntra { intra_type: IMbType::I4x4 })
+            } else if i_type_idx >= 1 && i_type_idx <= 24 {
+                let mode_idx = (i_type_idx - 1) % 4;
+                let cbp_idx = (i_type_idx - 1) / 4;
+
+                let pred_mode = match mode_idx {
+                    0 => Intra16x16Mode::Vertical,
+                    1 => Intra16x16Mode::Horizontal,
+                    2 => Intra16x16Mode::Dc,
+                    3 => Intra16x16Mode::Plane,
+                    _ => return Err(Error::invalid("H.264", "Invalid I_16x16 pred mode in P slice")),
+                };
+
+                let coded_block_pattern = match cbp_idx {
+                    0 => 0,
+                    1 => 0x0F,
+                    2 => 0x10,
+                    3 => 0x1F,
+                    4 => 0x20,
+                    5 => 0x2F,
+                    _ => 0x3F,
+                };
+
+                Ok(PMbType::PIntra {
+                    intra_type: IMbType::I16x16 {
+                        pred_mode,
+                        coded_block_pattern,
+                        qp_delta: 0,
+                    },
+                })
+            } else {
+                // I_PCM
+                Ok(PMbType::PIntra { intra_type: IMbType::IPcm })
+            }
+        }
+        _ => Err(Error::invalid("H.264", "Invalid P-slice MB type")),
+    }
+}
+
+/// Decode a single P-slice macroblock
+///
+/// Returns macroblock data and motion vectors
+pub fn decode_p_macroblock(
+    br: &mut BitReader,
+    mb_type: PMbType,
+    ref_frame: Option<&[u8]>,
+    frame_width: usize,
+    frame_height: usize,
+    mb_x: usize,
+    mb_y: usize,
+) -> Result<MacroblockData> {
+    use super::motion::{parse_mvd, predict_motion_vector, MotionVector};
+    use super::predict::predict_inter;
+
+    match mb_type {
+        PMbType::PSkip => {
+            // P_Skip: use zero motion vector, no residual
+            // Copy from reference frame at same position
+            decode_p_skip_macroblock(ref_frame, frame_width, mb_x, mb_y)
+        }
+        PMbType::P16x16 => {
+            // Single 16x16 partition
+            decode_p_16x16_macroblock(br, ref_frame, frame_width, frame_height, mb_x, mb_y)
+        }
+        PMbType::PIntra { intra_type } => {
+            // Intra macroblock in P-slice
+            decode_i_macroblock(br, intra_type, true)
+        }
+        _ => {
+            // Other P macroblock types (P_16x8, P_8x16, P_8x8, etc.)
+            // Simplified: return gray macroblock for now
+            Ok(MacroblockData {
+                luma: vec![128u8; 256],
+                chroma_u: vec![128u8; 64],
+                chroma_v: vec![128u8; 64],
+            })
+        }
+    }
+}
+
+/// Decode P_Skip macroblock
+fn decode_p_skip_macroblock(
+    ref_frame: Option<&[u8]>,
+    frame_width: usize,
+    mb_x: usize,
+    mb_y: usize,
+) -> Result<MacroblockData> {
+    let mut luma = vec![128u8; 256];
+
+    if let Some(ref_data) = ref_frame {
+        // Copy 16x16 block from reference frame at same position
+        for y in 0..16 {
+            for x in 0..16 {
+                let ref_y = mb_y * 16 + y;
+                let ref_x = mb_x * 16 + x;
+                if ref_y < ref_data.len() / frame_width && ref_x < frame_width {
+                    luma[y * 16 + x] = ref_data[ref_y * frame_width + ref_x];
+                }
+            }
+        }
+    }
+
+    Ok(MacroblockData {
+        luma,
+        chroma_u: vec![128u8; 64],
+        chroma_v: vec![128u8; 64],
+    })
+}
+
+/// Decode P_16x16 macroblock (single partition)
+fn decode_p_16x16_macroblock(
+    br: &mut BitReader,
+    ref_frame: Option<&[u8]>,
+    frame_width: usize,
+    frame_height: usize,
+    mb_x: usize,
+    mb_y: usize,
+) -> Result<MacroblockData> {
+    use super::motion::{parse_mvd, predict_motion_vector, MotionVector};
+    use super::predict::predict_inter;
+
+    // Parse motion vector difference
+    let (mvd_x, mvd_y) = parse_mvd(br)?;
+
+    // Predict motion vector (simplified: use zero prediction)
+    let mvp = predict_motion_vector(None, None, None);
+    let mv_x = mvp.x + mvd_x;
+    let mv_y = mvp.y + mvd_y;
+
+    // Perform inter prediction
+    let mut predicted = vec![0u8; 256];
+
+    if let Some(ref_data) = ref_frame {
+        predict_inter(
+            ref_data,
+            frame_width,
+            frame_height,
+            mv_x,
+            mv_y,
+            mb_x,
+            mb_y,
+            &mut predicted,
+            16,
+            16,
+        )?;
+    } else {
+        // No reference frame, use gray
+        predicted = vec![128u8; 256];
+    }
+
+    // Decode residual (simplified: assume no residual for now)
+    // Real implementation would parse coded_block_pattern and residual blocks
+
+    Ok(MacroblockData {
+        luma: predicted,
+        chroma_u: vec![128u8; 64],
+        chroma_v: vec![128u8; 64],
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

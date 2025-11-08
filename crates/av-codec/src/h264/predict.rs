@@ -291,13 +291,51 @@ pub fn predict_intra_16x16(
 
 /// Perform inter prediction (motion compensation)
 ///
-/// Phase 2 TODO: Implement quarter-pel interpolation
+/// ISO/IEC 14496-10:2022 §8.4.2
+///
+/// # Arguments
+/// * `ref_frame` - Reference frame luma plane data
+/// * `width` - Frame width
+/// * `height` - Frame height
+/// * `mv_x` - Motion vector X component (quarter-pel units)
+/// * `mv_y` - Motion vector Y component (quarter-pel units)
+/// * `block_x` - Block position X in frame
+/// * `block_y` - Block position Y in frame
+/// * `output` - Output buffer for predicted block
+/// * `block_width` - Block width (4, 8, or 16)
+/// * `block_height` - Block height (4, 8, or 16)
 pub fn predict_inter(
-    _ref_frame: &[u8],
-    _mv_x: i32,
-    _mv_y: i32,
-    _output: &mut [u8],
+    ref_frame: &[u8],
+    width: usize,
+    height: usize,
+    mv_x: i32,
+    mv_y: i32,
+    block_x: usize,
+    block_y: usize,
+    output: &mut [u8],
+    block_width: usize,
+    block_height: usize,
 ) -> Result<()> {
-    // Placeholder for Phase 2
-    Ok(())
+    use super::motion::interpolate_luma_qpel;
+
+    // Calculate reference position in quarter-pel units
+    let ref_x = (block_x as i32 * 4) + mv_x;
+    let ref_y = (block_y as i32 * 4) + mv_y;
+
+    // Bounds check
+    if ref_x < 0 || ref_y < 0 {
+        return Err(av_core::Error::invalid("inter_pred", "Negative reference position"));
+    }
+
+    // Perform interpolation
+    interpolate_luma_qpel(
+        ref_frame,
+        width,
+        height,
+        ref_x,
+        ref_y,
+        output,
+        block_width,
+        block_height,
+    )
 }

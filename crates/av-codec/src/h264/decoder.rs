@@ -100,43 +100,45 @@ impl H264Decoder {
         let width = sps.width();
         let height = sps.height();
 
-        // Decode I-slice using macroblock decoder
+        // Decode slice based on type
         use super::SliceType;
 
-        if slice_header.slice_type == SliceType::I {
-            self.decode_i_slice(&nal.rbsp, &sps, width, height)
-        } else {
-            // For P/B slices, return placeholder gray frame for now
-            let y_size = width * height;
-            let uv_size = (width / 2) * (height / 2);
+        match slice_header.slice_type {
+            SliceType::I => self.decode_i_slice(&nal.rbsp, &sps, width, height),
+            SliceType::P => self.decode_p_slice(&nal.rbsp, &sps, width, height),
+            _ => {
+                // For B/SP/SI slices, return placeholder gray frame
+                let y_size = width * height;
+                let uv_size = (width / 2) * (height / 2);
 
-            let y_plane = Plane {
-                data: vec![128; y_size],
-                stride: width,
-            };
+                let y_plane = Plane {
+                    data: vec![128; y_size],
+                    stride: width,
+                };
 
-            let u_plane = Plane {
-                data: vec![128; uv_size],
-                stride: width / 2,
-            };
+                let u_plane = Plane {
+                    data: vec![128; uv_size],
+                    stride: width / 2,
+                };
 
-            let v_plane = Plane {
-                data: vec![128; uv_size],
-                stride: width / 2,
-            };
+                let v_plane = Plane {
+                    data: vec![128; uv_size],
+                    stride: width / 2,
+                };
 
-            Ok(Some(Frame {
-                planes: vec![y_plane, u_plane, v_plane],
-                pts: None,
-                duration: None,
-                width,
-                height,
-                pixel_format: Some(PixelFormat::Yuv420p),
-                sample_format: None,
-                sample_rate: None,
-                samples: None,
-                channels: None,
-            }))
+                Ok(Some(Frame {
+                    planes: vec![y_plane, u_plane, v_plane],
+                    pts: None,
+                    duration: None,
+                    width,
+                    height,
+                    pixel_format: Some(PixelFormat::Yuv420p),
+                    sample_format: None,
+                    sample_rate: None,
+                    samples: None,
+                    channels: None,
+                }))
+            }
         }
     }
 
@@ -227,7 +229,7 @@ impl H264Decoder {
             stride: width / 2,
         };
 
-        Ok(Some(Frame {
+        let frame = Frame {
             planes: vec![y_plane, u_plane, v_plane],
             pts: None,
             duration: None,
@@ -238,7 +240,148 @@ impl H264Decoder {
             sample_rate: None,
             samples: None,
             channels: None,
-        }))
+        };
+
+        // Store as reference frame (I-frames are always reference frames)
+        self.reference_frames.push(DecodedPicture {
+            frame: frame.clone(),
+            frame_num: self.frame_num,
+            is_reference: true,
+        });
+        self.frame_num += 1;
+
+        // Keep only the most recent reference frame
+        if self.reference_frames.len() > 1 {
+            self.reference_frames.remove(0);
+        }
+
+        Ok(Some(frame))
+    }
+
+    /// Decode P-slice
+    fn decode_p_slice(&mut self, rbsp: &[u8], _sps: &Sps, width: usize, height: usize) -> Result<Option<Frame>> {
+        use super::macroblock::{decode_mb_type_p, decode_p_macroblock};
+        use super::nal::BitReader;
+
+        let mut br = BitReader::new(rbsp);
+
+        let mb_width = (width + 15) / 16;
+        let mb_height = (height + 15) / 16;
+        let total_mbs = mb_width * mb_height;
+
+        // Allocate frame buffers
+        let y_size = width * height;
+        let uv_size = (width / 2) * (height / 2);
+
+        let mut y_data = vec![128u8; y_size];
+        let mut u_data = vec![128u8; uv_size];
+        let mut v_data = vec![128u8; uv_size];
+
+        // Get reference frame (use last decoded frame if available)
+        let ref_frame_data = if !self.reference_frames.is_empty() {
+            Some(&self.reference_frames[0].frame.planes[0].data[..])
+        } else {
+            None
+        };
+
+        // Decode macroblocks (simplified: decode first few MBs only)
+        let max_mbs_to_decode = 4.min(total_mbs);
+
+        for mb_idx in 0..max_mbs_to_decode {
+            if !br.more_rbsp_data() {
+                break;
+            }
+
+            let mb_y = mb_idx / mb_width;
+            let mb_x = mb_idx % mb_width;
+
+            // Decode macroblock type
+            let mb_type = match decode_mb_type_p(&mut br) {
+                Ok(t) => t,
+                Err(_) => break,
+            };
+
+            // Decode macroblock data
+            let mb_data = match decode_p_macroblock(
+                &mut br,
+                mb_type,
+                ref_frame_data,
+                width,
+                height,
+                mb_x,
+                mb_y,
+            ) {
+                Ok(d) => d,
+                Err(_) => break,
+            };
+
+            // Copy macroblock to frame buffer
+            for y in 0..16 {
+                for x in 0..16 {
+                    let frame_y = mb_y * 16 + y;
+                    let frame_x = mb_x * 16 + x;
+                    if frame_y < height && frame_x < width {
+                        y_data[frame_y * width + frame_x] = mb_data.luma[y * 16 + x];
+                    }
+                }
+            }
+
+            // Copy chroma (8x8 per macroblock)
+            for y in 0..8 {
+                for x in 0..8 {
+                    let frame_y = mb_y * 8 + y;
+                    let frame_x = mb_x * 8 + x;
+                    if frame_y < height / 2 && frame_x < width / 2 {
+                        let idx = frame_y * (width / 2) + frame_x;
+                        u_data[idx] = mb_data.chroma_u[y * 8 + x];
+                        v_data[idx] = mb_data.chroma_v[y * 8 + x];
+                    }
+                }
+            }
+        }
+
+        let y_plane = Plane {
+            data: y_data,
+            stride: width,
+        };
+
+        let u_plane = Plane {
+            data: u_data,
+            stride: width / 2,
+        };
+
+        let v_plane = Plane {
+            data: v_data,
+            stride: width / 2,
+        };
+
+        let frame = Frame {
+            planes: vec![y_plane, u_plane, v_plane],
+            pts: None,
+            duration: None,
+            width,
+            height,
+            pixel_format: Some(PixelFormat::Yuv420p),
+            sample_format: None,
+            sample_rate: None,
+            samples: None,
+            channels: None,
+        };
+
+        // Store as reference frame for future P-frames
+        self.reference_frames.push(DecodedPicture {
+            frame: frame.clone(),
+            frame_num: self.frame_num,
+            is_reference: true,
+        });
+        self.frame_num += 1;
+
+        // Keep only the most recent reference frame
+        if self.reference_frames.len() > 1 {
+            self.reference_frames.remove(0);
+        }
+
+        Ok(Some(frame))
     }
 
     /// Get decoder info

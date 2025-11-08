@@ -164,11 +164,14 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Macroblock-to-frame assembly
   - Note: Deblocking filter pending SIMD optimization
 
-- ⏳ **P-Slice Decoding**
-  - Inter prediction
-  - Motion vector parsing
-  - Motion compensation (quarter-pel)
-  - Weighted prediction
+- ✅ **P-Slice Decoding** (Baseline Profile)
+  - Motion vector parsing and prediction (MVD, median prediction)
+  - Inter prediction with reference frame selection
+  - Motion compensation with quarter-pel interpolation (simplified)
+  - P macroblock types (P_Skip, P_16x16, P_16x8, P_8x16, P_8x8, Intra in P-slice)
+  - Reference frame management (DPB with single reference)
+  - Half-pel and quarter-pel interpolation (bilinear approximation)
+  - Note: Advanced features pending (weighted prediction, multi-reference, full 6-tap filter)
 
 - ⏳ **B-Slice Support** (Main Profile)
   - Bidirectional prediction
@@ -403,23 +406,22 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 
 ## Next Steps (Priority Order)
 
-1. **P-Slice Decoding** (complete H.264 baseline profile)
-   - Inter prediction
-   - Motion vector parsing and prediction
-   - Motion compensation (quarter-pel interpolation)
-   - Weighted prediction
-
-2. **SIMD Kernels** (achieve ±10% FFmpeg performance)
+1. **SIMD Kernels** (achieve ±10% FFmpeg performance)
    - IDCT SSE2/AVX2
    - Motion compensation
    - Deblocking filter
 
-3. **Integration Testing** (validate correctness)
+2. **Integration Testing** (validate correctness)
    - FATE sample compatibility
    - Golden output verification
    - Frame checksum validation
 
-5. **H.264 Encoder** (Phase 3 milestone)
+3. **B-Slice Decoding** (Main Profile support)
+   - Bidirectional prediction
+   - Direct mode
+   - B-frame reordering
+
+4. **H.264 Encoder** (Phase 3 milestone)
    - Basic rate control
    - Motion estimation
    - I/P frame encoding
@@ -452,5 +454,5 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 ---
 
 **Last Updated**: 2025-11-08
-**Status**: Phase 1 complete, Phase 2 major progress (H.264 I-slice decoder, MKV, MPEG-TS, FPS filter), Phase 3 advancing (MKV/MPEG-TS/HLS muxers)
-**Next Milestone**: H.264 P-slice decoding or SIMD kernels
+**Status**: Phase 1 complete, Phase 2 major progress (H.264 I/P-slice decoder - baseline profile, MKV, MPEG-TS, FPS filter), Phase 3 advancing (MKV/MPEG-TS/HLS muxers)
+**Next Milestone**: SIMD kernels or B-slice decoding

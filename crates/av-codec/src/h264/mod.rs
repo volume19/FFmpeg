@@ -13,6 +13,7 @@ pub mod transform;
 pub mod deblock;
 pub mod cavlc;
 pub mod macroblock;
+pub mod motion;
 
 pub use decoder::H264Decoder;
 pub use parser::{Sps, Pps};
