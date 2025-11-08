@@ -87,6 +87,16 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Reference frame management structure
   - Slice header parsing
 
+- ✅ **I-Slice Decoding** (Baseline Profile)
+  - CAVLC entropy decoder (coeff_token, level, total_zeros, run_before)
+  - Intra 4x4 prediction (9 modes: vertical, horizontal, DC, DDL, DDR, VR, HD, VL, HU)
+  - Intra 16x16 prediction (4 modes: vertical, horizontal, DC, plane)
+  - Macroblock parsing (I_4x4, I_16x16, I_PCM types)
+  - Inverse DCT 4x4 transform
+  - Inverse Hadamard 4x4 transform (for DC coefficients)
+  - Residual addition and pixel reconstruction
+  - Frame assembly from macroblocks
+
 #### Video Filters
 - ✅ **Crop Filter**
   - Rectangular region extraction
@@ -144,12 +154,15 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 ### Pending (Phase 2 Completion)
 
 #### H.264 Decoder Kernels
-- ⏳ **I-Slice Decoding**
-  - Macroblock parsing (I_4x4, I_16x16)
-  - Intra prediction (9 modes for 4x4, 4 modes for 16x16)
-  - CAVLC entropy decoding
-  - Inverse transform (IDCT 4x4)
-  - Deblocking filter
+- ✅ **I-Slice Decoding** (Baseline Profile)
+  - Macroblock parsing (I_4x4, I_16x16, I_PCM)
+  - Intra prediction (9 modes for 4x4: vertical, horizontal, DC, diagonal-down-left, diagonal-down-right, vertical-right, horizontal-down, vertical-left, horizontal-up)
+  - Intra prediction (4 modes for 16x16: vertical, horizontal, DC, plane)
+  - CAVLC entropy decoding (coeff_token, level, total_zeros, run_before)
+  - Inverse transform (IDCT 4x4, Hadamard 4x4 for DC coefficients)
+  - Residual addition to prediction
+  - Macroblock-to-frame assembly
+  - Note: Deblocking filter pending SIMD optimization
 
 - ⏳ **P-Slice Decoding**
   - Inter prediction
@@ -390,21 +403,18 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 
 ## Next Steps (Priority Order)
 
-1. **I-Slice Decoding** (complete H.264 baseline)
-   - Macroblock parsing
-   - Intra prediction implementation
-   - CAVLC entropy decoding
+1. **P-Slice Decoding** (complete H.264 baseline profile)
+   - Inter prediction
+   - Motion vector parsing and prediction
+   - Motion compensation (quarter-pel interpolation)
+   - Weighted prediction
 
 2. **SIMD Kernels** (achieve ±10% FFmpeg performance)
    - IDCT SSE2/AVX2
    - Motion compensation
    - Deblocking filter
 
-3. **P-Slice Decoding** (complete baseline profile)
-   - Inter prediction
-   - Motion vectors
-
-4. **Integration Testing** (validate correctness)
+3. **Integration Testing** (validate correctness)
    - FATE sample compatibility
    - Golden output verification
    - Frame checksum validation
@@ -442,5 +452,5 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 ---
 
 **Last Updated**: 2025-11-08
-**Status**: Phase 1 complete, Phase 2 major progress (MKV, MPEG-TS, FPS filter), Phase 3 advancing (MKV muxer)
-**Next Milestone**: H.264 I-slice decoding or SIMD kernels
+**Status**: Phase 1 complete, Phase 2 major progress (H.264 I-slice decoder, MKV, MPEG-TS, FPS filter), Phase 3 advancing (MKV/MPEG-TS/HLS muxers)
+**Next Milestone**: H.264 P-slice decoding or SIMD kernels

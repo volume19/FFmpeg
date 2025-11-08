@@ -11,6 +11,8 @@ pub mod slice;
 pub mod predict;
 pub mod transform;
 pub mod deblock;
+pub mod cavlc;
+pub mod macroblock;
 
 pub use decoder::H264Decoder;
 pub use parser::{Sps, Pps};
