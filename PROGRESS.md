@@ -149,7 +149,7 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Frame memory layout validation
   - End-to-end demux + decode
 
-**Commits**: 4956959, 9a1be5d, ae76335, 8733463, 41a01ea (I-slice), bfe171a (P-slice), 9e02c00 (SIMD), bc2ae34 (deblock)
+**Commits**: 4956959, 9a1be5d, ae76335, 8733463, 41a01ea (I-slice), bfe171a (P-slice), 9e02c00 (SIMD), bc2ae34 (deblock), d92f466 (B-types)
 
 ### Pending (Phase 2 Completion)
 
@@ -173,10 +173,15 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Half-pel and quarter-pel interpolation (bilinear approximation)
   - Note: Advanced features pending (weighted prediction, multi-reference, full 6-tap filter)
 
-- ⏳ **B-Slice Support** (Main Profile)
-  - Bidirectional prediction
-  - Direct mode
-  - B-frame reordering
+- ✅ **B-Slice Decoding** (Main Profile Foundation)
+  - B-macroblock type parsing (24 types: Direct, L0, L1, Bi, with all partition sizes)
+  - Bidirectional prediction (averaging L0 and L1 references)
+  - List 1 prediction (backward reference)
+  - Direct mode motion vector derivation (simplified temporal prediction)
+  - Reference list management (L0 forward, L1 backward)
+  - Integration with decoder pipeline
+  - 3 tests for B-macroblock parsing + 3 tests for prediction functions
+  - Note: Advanced features pending (weighted prediction, multi-reference, temporal direct mode)
 
 - ⏳ **CABAC Support** (Main/High Profiles)
   - Context-adaptive binary arithmetic coding

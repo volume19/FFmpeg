@@ -417,6 +417,48 @@ pub fn decode_mb_type_p(br: &mut BitReader) -> Result<PMbType> {
     }
 }
 
+/// Decode macroblock type from bitstream (B-slice)
+///
+/// ISO/IEC 14496-10:2022 Table 7-14
+pub fn decode_mb_type_b(br: &mut BitReader) -> Result<BMbType> {
+    let mb_type = br.read_ue()?;
+
+    // Table 7-14: mb_type values for B slices
+    // 0 = B_Direct_16x16
+    // 1-22 = various partitioning and prediction modes
+    // 23+ = Intra modes
+    match mb_type {
+        0 => Ok(BMbType::BDirect16x16),
+        1 => Ok(BMbType::BL016x16),
+        2 => Ok(BMbType::BL116x16),
+        3 => Ok(BMbType::BBi16x16),
+        4 => Ok(BMbType::BL0L016x8),
+        5 => Ok(BMbType::BL0L08x16),
+        6 => Ok(BMbType::BL1L116x8),
+        7 => Ok(BMbType::BL1L18x16),
+        8 => Ok(BMbType::BL0L116x8),
+        9 => Ok(BMbType::BL0L18x16),
+        10 => Ok(BMbType::BL1L016x8),
+        11 => Ok(BMbType::BL1L08x16),
+        12 => Ok(BMbType::BL0Bi16x8),
+        13 => Ok(BMbType::BL0Bi8x16),
+        14 => Ok(BMbType::BL1Bi16x8),
+        15 => Ok(BMbType::BL1Bi8x16),
+        16 => Ok(BMbType::BBiL016x8),
+        17 => Ok(BMbType::BBiL08x16),
+        18 => Ok(BMbType::BBiL116x8),
+        19 => Ok(BMbType::BBiL18x16),
+        20 => Ok(BMbType::BBiBi16x8),
+        21 => Ok(BMbType::BBiBi8x16),
+        22 => Ok(BMbType::B8x8),
+        _ => {
+            // 23+ are intra modes - for now return Direct mode (simplified)
+            // Full implementation would decode I_4x4/I_16x16/I_PCM
+            Ok(BMbType::BDirect16x16)
+        }
+    }
+}
+
 /// Decode a single P-slice macroblock
 ///
 /// Returns macroblock data and motion vectors
@@ -565,5 +607,35 @@ mod tests {
             }
             _ => panic!("Expected I_16x16"),
         }
+    }
+
+    #[test]
+    fn test_decode_mb_type_b_direct() {
+        // mb_type = 0 (B_Direct_16x16)
+        let data = vec![0b1_0000000]; // ue(0) = 1
+        let mut br = BitReader::new(&data);
+
+        let mb_type = decode_mb_type_b(&mut br).unwrap();
+        assert_eq!(mb_type, BMbType::BDirect16x16);
+    }
+
+    #[test]
+    fn test_decode_mb_type_b_l0() {
+        // mb_type = 1 (B_L0_16x16)
+        let data = vec![0b01_000000]; // ue(1) = 010
+        let mut br = BitReader::new(&data);
+
+        let mb_type = decode_mb_type_b(&mut br).unwrap();
+        assert_eq!(mb_type, BMbType::BL016x16);
+    }
+
+    #[test]
+    fn test_decode_mb_type_b_bi() {
+        // mb_type = 3 (B_Bi_16x16 - bidirectional)
+        let data = vec![0b00100_000]; // ue(3) = 00100
+        let mut br = BitReader::new(&data);
+
+        let mb_type = decode_mb_type_b(&mut br).unwrap();
+        assert_eq!(mb_type, BMbType::BBi16x16);
     }
 }

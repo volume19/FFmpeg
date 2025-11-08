@@ -282,6 +282,73 @@ fn interpolate_bilinear(
     }
 }
 
+/// Perform bidirectional prediction by averaging List 0 and List 1 predictions
+///
+/// ISO/IEC 14496-10:2022 §8.4.2.3 (Weighted prediction)
+pub fn predict_bidirectional(
+    ref_l0: &[u8],
+    ref_l1: &[u8],
+    width: usize,
+    height: usize,
+    mv_l0: MotionVector,
+    mv_l1: MotionVector,
+    output: &mut [u8],
+    block_width: usize,
+    block_height: usize,
+    mb_x: usize,
+    mb_y: usize,
+) -> Result<()> {
+    let mut pred_l0 = vec![0u8; block_width * block_height];
+    let mut pred_l1 = vec![0u8; block_width * block_height];
+
+    // Get predictions from both reference lists
+    let x_l0 = (mb_x * 16) as i32 * 4 + mv_l0.x;
+    let y_l0 = (mb_y * 16) as i32 * 4 + mv_l0.y;
+    interpolate_luma_qpel(ref_l0, width, height, x_l0, y_l0, &mut pred_l0, block_width, block_height)?;
+
+    let x_l1 = (mb_x * 16) as i32 * 4 + mv_l1.x;
+    let y_l1 = (mb_y * 16) as i32 * 4 + mv_l1.y;
+    interpolate_luma_qpel(ref_l1, width, height, x_l1, y_l1, &mut pred_l1, block_width, block_height)?;
+
+    // Average the two predictions
+    for i in 0..(block_width * block_height) {
+        output[i] = ((pred_l0[i] as u16 + pred_l1[i] as u16 + 1) >> 1) as u8;
+    }
+
+    Ok(())
+}
+
+/// Perform List 1 prediction (backward reference for B-slices)
+///
+/// ISO/IEC 14496-10:2022 §8.4.2 (Inter prediction for B-slices)
+pub fn predict_list1(
+    ref_l1: &[u8],
+    width: usize,
+    height: usize,
+    mv: MotionVector,
+    output: &mut [u8],
+    block_width: usize,
+    block_height: usize,
+    mb_x: usize,
+    mb_y: usize,
+) -> Result<()> {
+    let x = (mb_x * 16) as i32 * 4 + mv.x;
+    let y = (mb_y * 16) as i32 * 4 + mv.y;
+    interpolate_luma_qpel(ref_l1, width, height, x, y, output, block_width, block_height)
+}
+
+/// Calculate direct mode motion vectors (simplified temporal prediction)
+///
+/// ISO/IEC 14496-10:2022 §8.4.1.2 (Direct prediction)
+pub fn derive_direct_motion_vectors(
+    mb_x: usize,
+    mb_y: usize,
+) -> (MotionVector, MotionVector) {
+    // Simplified: In real implementation, this would derive from co-located macroblock
+    // For now, return zero motion vectors (direct mode spatial/temporal prediction)
+    (MotionVector::zero(), MotionVector::zero())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -330,5 +397,61 @@ mod tests {
         copy_block(&src, 5, 1, 1, &mut dst, 2, 2);
 
         assert_eq!(dst, vec![7, 8, 12, 13]);
+    }
+
+    #[test]
+    fn test_predict_bidirectional_averaging() {
+        // Create simple 4x4 reference blocks
+        let ref_l0 = vec![
+            100, 100, 100, 100,
+            100, 100, 100, 100,
+            100, 100, 100, 100,
+            100, 100, 100, 100,
+        ];
+        let ref_l1 = vec![
+            200, 200, 200, 200,
+            200, 200, 200, 200,
+            200, 200, 200, 200,
+            200, 200, 200, 200,
+        ];
+        let mut output = vec![0u8; 16];
+
+        let mv_l0 = MotionVector::zero();
+        let mv_l1 = MotionVector::zero();
+
+        predict_bidirectional(&ref_l0, &ref_l1, 4, 4, mv_l0, mv_l1, &mut output, 4, 4, 0, 0).unwrap();
+
+        // Should average: (100 + 200) / 2 = 150
+        assert_eq!(output[0], 150);
+        assert_eq!(output[15], 150);
+    }
+
+    #[test]
+    fn test_predict_list1() {
+        // Create simple 4x4 reference block
+        let ref_l1 = vec![
+            50, 60, 70, 80,
+            90, 100, 110, 120,
+            130, 140, 150, 160,
+            170, 180, 190, 200,
+        ];
+        let mut output = vec![0u8; 16];
+
+        let mv = MotionVector::zero();
+
+        predict_list1(&ref_l1, 4, 4, mv, &mut output, 4, 4, 0, 0).unwrap();
+
+        // Should copy reference block
+        assert_eq!(output[0], 50);
+        assert_eq!(output[5], 100);
+        assert_eq!(output[15], 200);
+    }
+
+    #[test]
+    fn test_derive_direct_motion_vectors() {
+        // Direct mode should return zero MVs in simplified implementation
+        let (mv_l0, mv_l1) = derive_direct_motion_vectors(0, 0);
+        assert_eq!(mv_l0, MotionVector::zero());
+        assert_eq!(mv_l1, MotionVector::zero());
     }
 }

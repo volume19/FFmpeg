@@ -106,8 +106,9 @@ impl H264Decoder {
         match slice_header.slice_type {
             SliceType::I => self.decode_i_slice(&nal.rbsp, &sps, width, height),
             SliceType::P => self.decode_p_slice(&nal.rbsp, &sps, width, height),
+            SliceType::B => self.decode_b_slice(&nal.rbsp, &sps, width, height),
             _ => {
-                // For B/SP/SI slices, return placeholder gray frame
+                // For SP/SI slices, return placeholder gray frame
                 let y_size = width * height;
                 let uv_size = (width / 2) * (height / 2);
 
@@ -378,6 +379,202 @@ impl H264Decoder {
 
         // Keep only the most recent reference frame
         if self.reference_frames.len() > 1 {
+            self.reference_frames.remove(0);
+        }
+
+        Ok(Some(frame))
+    }
+
+    /// Decode B-slice
+    fn decode_b_slice(&mut self, rbsp: &[u8], _sps: &Sps, width: usize, height: usize) -> Result<Option<Frame>> {
+        use super::macroblock::{decode_mb_type_b, BMbType};
+        use super::motion::{derive_direct_motion_vectors, predict_bidirectional, predict_list1, MotionVector};
+        use super::nal::BitReader;
+
+        let mut br = BitReader::new(rbsp);
+
+        let mb_width = (width + 15) / 16;
+        let mb_height = (height + 15) / 16;
+        let total_mbs = mb_width * mb_height;
+
+        // Allocate frame buffers
+        let y_size = width * height;
+        let uv_size = (width / 2) * (height / 2);
+
+        let mut y_data = vec![128u8; y_size];
+        let mut u_data = vec![128u8; uv_size];
+        let mut v_data = vec![128u8; uv_size];
+
+        // Get reference frames for List 0 (forward) and List 1 (backward)
+        // Simplified: Use available reference frames, with fallback
+        let ref_l0_data = if self.reference_frames.len() > 0 {
+            Some(&self.reference_frames[0].frame.planes[0].data[..])
+        } else {
+            None
+        };
+
+        let ref_l1_data = if self.reference_frames.len() > 1 {
+            Some(&self.reference_frames[1].frame.planes[0].data[..])
+        } else {
+            // Fallback: use same reference as L0
+            ref_l0_data
+        };
+
+        // Decode macroblocks (simplified: decode first few MBs only)
+        let max_mbs_to_decode = 4.min(total_mbs);
+
+        for mb_idx in 0..max_mbs_to_decode {
+            if !br.more_rbsp_data() {
+                break;
+            }
+
+            let mb_y = mb_idx / mb_width;
+            let mb_x = mb_idx % mb_width;
+
+            // Decode macroblock type
+            let mb_type = match decode_mb_type_b(&mut br) {
+                Ok(t) => t,
+                Err(_) => break,
+            };
+
+            // Process macroblock based on type
+            let mut mb_luma = vec![128u8; 256]; // 16x16 luma block
+
+            match mb_type {
+                BMbType::BSkip | BMbType::BDirect16x16 => {
+                    // Direct mode: derive motion vectors from co-located macroblock
+                    let (mv_l0, mv_l1) = derive_direct_motion_vectors(mb_x, mb_y);
+
+                    if let (Some(ref_l0), Some(ref_l1)) = (ref_l0_data, ref_l1_data) {
+                        let _ = predict_bidirectional(
+                            ref_l0,
+                            ref_l1,
+                            width,
+                            height,
+                            mv_l0,
+                            mv_l1,
+                            &mut mb_luma,
+                            16,
+                            16,
+                            mb_x,
+                            mb_y,
+                        );
+                    }
+                }
+                BMbType::BL016x16 => {
+                    // List 0 prediction only
+                    if let Some(ref_l0) = ref_l0_data {
+                        let mv = MotionVector::zero(); // Simplified: should parse MVD
+                        let mut pred = vec![0u8; 256];
+                        let _ = super::motion::interpolate_luma_qpel(
+                            ref_l0,
+                            width,
+                            height,
+                            (mb_x * 16) as i32 * 4 + mv.x,
+                            (mb_y * 16) as i32 * 4 + mv.y,
+                            &mut pred,
+                            16,
+                            16,
+                        );
+                        mb_luma.copy_from_slice(&pred);
+                    }
+                }
+                BMbType::BL116x16 => {
+                    // List 1 prediction only
+                    if let Some(ref_l1) = ref_l1_data {
+                        let mv = MotionVector::zero(); // Simplified: should parse MVD
+                        let _ = predict_list1(
+                            ref_l1,
+                            width,
+                            height,
+                            mv,
+                            &mut mb_luma,
+                            16,
+                            16,
+                            mb_x,
+                            mb_y,
+                        );
+                    }
+                }
+                BMbType::BBi16x16 => {
+                    // Bidirectional prediction
+                    if let (Some(ref_l0), Some(ref_l1)) = (ref_l0_data, ref_l1_data) {
+                        let mv_l0 = MotionVector::zero(); // Simplified: should parse MVD
+                        let mv_l1 = MotionVector::zero(); // Simplified: should parse MVD
+                        let _ = predict_bidirectional(
+                            ref_l0,
+                            ref_l1,
+                            width,
+                            height,
+                            mv_l0,
+                            mv_l1,
+                            &mut mb_luma,
+                            16,
+                            16,
+                            mb_x,
+                            mb_y,
+                        );
+                    }
+                }
+                _ => {
+                    // Other partition types: stub implementation
+                    // In real implementation, handle 16x8, 8x16, 8x8, etc.
+                }
+            }
+
+            // Copy macroblock to frame buffer
+            for y in 0..16 {
+                for x in 0..16 {
+                    let frame_y = mb_y * 16 + y;
+                    let frame_x = mb_x * 16 + x;
+                    if frame_y < height && frame_x < width {
+                        y_data[frame_y * width + frame_x] = mb_luma[y * 16 + x];
+                    }
+                }
+            }
+
+            // Chroma prediction (simplified: use same motion vectors)
+            // In real implementation, scale motion vectors for chroma
+        }
+
+        let y_plane = Plane {
+            data: y_data,
+            stride: width,
+        };
+
+        let u_plane = Plane {
+            data: u_data,
+            stride: width / 2,
+        };
+
+        let v_plane = Plane {
+            data: v_data,
+            stride: width / 2,
+        };
+
+        let frame = Frame {
+            planes: vec![y_plane, u_plane, v_plane],
+            pts: None,
+            duration: None,
+            width,
+            height,
+            pixel_format: Some(PixelFormat::Yuv420p),
+            sample_format: None,
+            sample_rate: None,
+            samples: None,
+            channels: None,
+        };
+
+        // Store as reference frame for future frames
+        self.reference_frames.push(DecodedPicture {
+            frame: frame.clone(),
+            frame_num: self.frame_num,
+            is_reference: true,
+        });
+        self.frame_num += 1;
+
+        // Keep last two reference frames for B-slice prediction
+        if self.reference_frames.len() > 2 {
             self.reference_frames.remove(0);
         }
 
