@@ -306,6 +306,59 @@ pub enum PMbType {
     },
 }
 
+/// Macroblock type for B-slices (ISO/IEC 14496-10:2022 §7.4.5.2)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BMbType {
+    /// B_Direct_16x16 (direct mode)
+    BDirect16x16 = 0,
+    /// B_L0_16x16 (list 0 prediction)
+    BL016x16 = 1,
+    /// B_L1_16x16 (list 1 prediction)
+    BL116x16 = 2,
+    /// B_Bi_16x16 (bidirectional prediction)
+    BBi16x16 = 3,
+    /// B_L0_L0_16x8
+    BL0L016x8 = 4,
+    /// B_L0_L0_8x16
+    BL0L08x16 = 5,
+    /// B_L1_L1_16x8
+    BL1L116x8 = 6,
+    /// B_L1_L1_8x16
+    BL1L18x16 = 7,
+    /// B_L0_L1_16x8
+    BL0L116x8 = 8,
+    /// B_L0_L1_8x16
+    BL0L18x16 = 9,
+    /// B_L1_L0_16x8
+    BL1L016x8 = 10,
+    /// B_L1_L0_8x16
+    BL1L08x16 = 11,
+    /// B_L0_Bi_16x8
+    BL0Bi16x8 = 12,
+    /// B_L0_Bi_8x16
+    BL0Bi8x16 = 13,
+    /// B_L1_Bi_16x8
+    BL1Bi16x8 = 14,
+    /// B_L1_Bi_8x16
+    BL1Bi8x16 = 15,
+    /// B_Bi_L0_16x8
+    BBiL016x8 = 16,
+    /// B_Bi_L0_8x16
+    BBiL08x16 = 17,
+    /// B_Bi_L1_16x8
+    BBiL116x8 = 18,
+    /// B_Bi_L1_8x16
+    BBiL18x16 = 19,
+    /// B_Bi_Bi_16x8
+    BBiBi16x8 = 20,
+    /// B_Bi_Bi_8x16
+    BBiBi8x16 = 21,
+    /// B_8x8 (sub-macroblock mode)
+    B8x8 = 22,
+    /// B_Skip (direct prediction, no residual)
+    BSkip = 23,
+}
+
 /// Decode macroblock type from bitstream (P-slice)
 ///
 /// ISO/IEC 14496-10:2022 Table 7-13
