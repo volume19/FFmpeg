@@ -3,8 +3,8 @@
 //! Benchmarks for H.264 decoder and other codecs
 
 use av_codec::h264::{H264Decoder, Sps, Pps};
-use av_codec::h264::transform::{idct_4x4, idct_4x4_scalar};
-use av_codec::h264::simd::{idct_4x4_simd, interpolate_half_horizontal_simd, interpolate_half_vertical_simd};
+use av_codec::h264::transform::{idct_4x4, idct_4x4_scalar, idct_8x8};
+use av_codec::h264::simd::{idct_4x4_simd, idct_8x8_simd, interpolate_half_horizontal_simd, interpolate_half_vertical_simd};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn bench_h264_sps_parse(c: &mut Criterion) {
@@ -132,6 +132,28 @@ fn bench_motion_comp_vertical_simd(c: &mut Criterion) {
     });
 }
 
+fn bench_idct_8x8_scalar(c: &mut Criterion) {
+    let coeffs = [64i16; 64];  // Simple DC pattern
+    let mut output = [0i16; 64];
+
+    c.bench_function("h264_idct_8x8_scalar", |b| {
+        b.iter(|| {
+            idct_8x8(black_box(&coeffs), black_box(&mut output));
+        });
+    });
+}
+
+fn bench_idct_8x8_simd(c: &mut Criterion) {
+    let coeffs = [64i16; 64];
+    let mut output = [0i16; 64];
+
+    c.bench_function("h264_idct_8x8_simd", |b| {
+        b.iter(|| {
+            idct_8x8_simd(black_box(&coeffs), black_box(&mut output));
+        });
+    });
+}
+
 criterion_group!(
     codec_benches,
     bench_h264_sps_parse,
@@ -140,6 +162,8 @@ criterion_group!(
     bench_idct_4x4_scalar,
     bench_idct_4x4_simd,
     bench_idct_4x4_dispatch,
+    bench_idct_8x8_scalar,
+    bench_idct_8x8_simd,
     bench_motion_comp_horizontal_simd,
     bench_motion_comp_vertical_simd
 );
