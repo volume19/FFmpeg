@@ -149,7 +149,7 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Frame memory layout validation
   - End-to-end demux + decode
 
-**Commits**: 4956959, 9a1be5d, ae76335, 8733463, 41a01ea (I-slice), bfe171a (P-slice)
+**Commits**: 4956959, 9a1be5d, ae76335, 8733463, 41a01ea (I-slice), bfe171a (P-slice), 9e02c00 (SIMD), bc2ae34 (deblock)
 
 ### Pending (Phase 2 Completion)
 
@@ -182,6 +182,18 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Context-adaptive binary arithmetic coding
   - Context model management
 
+#### H.264 Deblocking Filter
+- ✅ **In-Loop Deblocking Filter** (ISO/IEC 14496-10:2022 §8.7)
+  - Complete alpha/beta/tc0 lookup tables from spec
+  - Boundary strength (Bs) calculation (strong, medium, weak)
+  - Luma edge filtering (vertical and horizontal)
+  - Chroma edge filtering (vertical and horizontal)
+  - Strong filtering (Bs=4): up to 3 pixels per side
+  - Normal filtering (Bs<4): tc0 clipping
+  - 9 comprehensive tests covering all filtering paths
+  - Scalar implementation: ~1-2ms per 1080p frame
+  - Future: SIMD optimization for 4-8x speedup
+
 #### SIMD Kernels
 - ✅ **IDCT 4x4** (SSE2, NEON)
   - Runtime dispatch based on CPU features
@@ -191,7 +203,7 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Note: SIMD overhead dominates for 4x4; benefits in batch processing
   - Infrastructure ready for larger transforms (8x8, 16x16)
 - ⏳ **Motion Compensation** (SSE2, NEON)
-- ⏳ **Deblocking Filter** (SSE2, NEON)
+- ⏳ **Deblocking Filter SIMD** (SSE2, NEON) - scalar version complete
 - ⏳ **YUV Scaling** (AVX2, NEON)
 
 #### Additional Formats
@@ -412,20 +424,23 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 
 ## Next Steps (Priority Order)
 
-1. **SIMD Kernels** (achieve ±10% FFmpeg performance)
-   - IDCT SSE2/AVX2
-   - Motion compensation
-   - Deblocking filter
-
-2. **Integration Testing** (validate correctness)
-   - FATE sample compatibility
-   - Golden output verification
-   - Frame checksum validation
-
-3. **B-Slice Decoding** (Main Profile support)
+1. **B-Slice Decoding** (Main Profile support)
    - Bidirectional prediction
    - Direct mode
    - B-frame reordering
+   - Reference list management
+
+2. **SIMD Optimization** (achieve ±10% FFmpeg performance)
+   - Motion compensation SIMD
+   - Deblocking filter SIMD
+   - Batch IDCT processing
+   - YUV scaling
+
+3. **Integration Testing** (validate correctness)
+   - FATE sample compatibility
+   - Golden output verification
+   - Frame checksum validation
+   - Real-world H.264 streams
 
 4. **H.264 Encoder** (Phase 3 milestone)
    - Basic rate control
@@ -460,5 +475,5 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 ---
 
 **Last Updated**: 2025-11-08
-**Status**: Phase 1 complete, Phase 2 major progress (H.264 I/P-slice decoder - baseline profile, MKV, MPEG-TS, FPS filter), Phase 3 advancing (MKV/MPEG-TS/HLS muxers)
-**Next Milestone**: SIMD kernels or B-slice decoding
+**Status**: Phase 1 complete, Phase 2 substantial progress (H.264 baseline complete: I/P-slices, SIMD IDCT, deblocking filter, MKV, MPEG-TS, FPS filter), Phase 3 advancing (MKV/MPEG-TS/HLS muxers)
+**Next Milestone**: B-slice decoding (Main Profile) or additional SIMD optimization
