@@ -184,9 +184,15 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - 3 tests for B-macroblock parsing + 3 tests for prediction functions
   - Note: Advanced features pending (weighted prediction, multi-reference, temporal direct mode)
 
-- ⏳ **CABAC Support** (Main/High Profiles)
-  - Context-adaptive binary arithmetic coding
-  - Context model management
+- ✅ **CABAC Foundation** (Main/High Profiles)
+  - Context-adaptive binary arithmetic coding engine
+  - Context model with state transitions (Table 9-36)
+  - Arithmetic decoder with range/offset management
+  - Binarization schemes (unary, truncated unary, exp-golomb)
+  - Context initialization from QP
+  - Bypass and terminate decoding modes
+  - 8 comprehensive tests
+  - Note: Full integration with macroblock decoding pending
 
 #### H.264 Deblocking Filter
 - ✅ **In-Loop Deblocking Filter** (ISO/IEC 14496-10:2022 §8.7)

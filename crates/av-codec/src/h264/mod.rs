@@ -12,6 +12,7 @@ pub mod predict;
 pub mod transform;
 pub mod deblock;
 pub mod cavlc;
+pub mod cabac;
 pub mod macroblock;
 pub mod motion;
 pub mod simd;
