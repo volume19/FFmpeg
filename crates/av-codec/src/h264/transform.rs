@@ -6,9 +6,25 @@ use av_core::Result;
 
 /// Inverse DCT for 4x4 block (ISO/IEC 14496-10:2022 §8.5.12.1)
 ///
-/// Simplified implementation for Phase 1
-/// Phase 2 TODO: Optimize with SIMD
+/// Automatically dispatches to SIMD-optimized implementation when available.
+/// Falls back to scalar implementation on unsupported platforms.
 pub fn idct_4x4(coeffs: &[i16; 16], output: &mut [i16; 16]) {
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+    {
+        super::simd::idct_4x4_simd(coeffs, output);
+    }
+
+    #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
+    {
+        idct_4x4_scalar(coeffs, output);
+    }
+}
+
+/// Scalar implementation of inverse DCT for 4x4 block
+///
+/// Used as fallback when SIMD is not available.
+/// ISO/IEC 14496-10:2022 §8.5.12.1
+pub fn idct_4x4_scalar(coeffs: &[i16; 16], output: &mut [i16; 16]) {
     // Simplified IDCT implementation
     // Real implementation requires proper 2D IDCT with integer arithmetic
 

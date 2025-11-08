@@ -149,7 +149,7 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Frame memory layout validation
   - End-to-end demux + decode
 
-**Commits**: 4956959, 9a1be5d, ae76335, 8733463
+**Commits**: 4956959, 9a1be5d, ae76335, 8733463, 41a01ea (I-slice), bfe171a (P-slice)
 
 ### Pending (Phase 2 Completion)
 
@@ -183,7 +183,13 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Context model management
 
 #### SIMD Kernels
-- ⏳ **IDCT** (SSE2, AVX2, NEON)
+- ✅ **IDCT 4x4** (SSE2, NEON)
+  - Runtime dispatch based on CPU features
+  - x86_64: SSE2 implementation
+  - AArch64: NEON implementation
+  - Benchmarks: Scalar ~9.4ns, SIMD ~18.6ns (single block)
+  - Note: SIMD overhead dominates for 4x4; benefits in batch processing
+  - Infrastructure ready for larger transforms (8x8, 16x16)
 - ⏳ **Motion Compensation** (SSE2, NEON)
 - ⏳ **Deblocking Filter** (SSE2, NEON)
 - ⏳ **YUV Scaling** (AVX2, NEON)

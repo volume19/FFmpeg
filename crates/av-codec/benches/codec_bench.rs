@@ -3,7 +3,9 @@
 //! Benchmarks for H.264 decoder and other codecs
 
 use av_codec::h264::{H264Decoder, Sps, Pps};
-use criterion::{black_box, criterion_group, criterion_main, Criterion, BenchmarkId};
+use av_codec::h264::transform::{idct_4x4, idct_4x4_scalar};
+use av_codec::h264::simd::idct_4x4_simd;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn bench_h264_sps_parse(c: &mut Criterion) {
     // Minimal SPS data (simplified for benchmarking)
@@ -40,11 +42,65 @@ fn bench_h264_decoder_creation(c: &mut Criterion) {
     });
 }
 
+fn bench_idct_4x4_scalar(c: &mut Criterion) {
+    // Typical DCT coefficient block with various frequencies
+    let coeffs = [
+        64i16, 16, -8, 4,
+        32, -12, 6, -3,
+        -16, 8, -4, 2,
+        8, -4, 2, -1,
+    ];
+    let mut output = [0i16; 16];
+
+    c.bench_function("h264_idct_4x4_scalar", |b| {
+        b.iter(|| {
+            idct_4x4_scalar(black_box(&coeffs), black_box(&mut output));
+        });
+    });
+}
+
+fn bench_idct_4x4_simd(c: &mut Criterion) {
+    // Same coefficients as scalar benchmark
+    let coeffs = [
+        64i16, 16, -8, 4,
+        32, -12, 6, -3,
+        -16, 8, -4, 2,
+        8, -4, 2, -1,
+    ];
+    let mut output = [0i16; 16];
+
+    c.bench_function("h264_idct_4x4_simd", |b| {
+        b.iter(|| {
+            idct_4x4_simd(black_box(&coeffs), black_box(&mut output));
+        });
+    });
+}
+
+fn bench_idct_4x4_dispatch(c: &mut Criterion) {
+    // Benchmark the auto-dispatch version (what users actually call)
+    let coeffs = [
+        64i16, 16, -8, 4,
+        32, -12, 6, -3,
+        -16, 8, -4, 2,
+        8, -4, 2, -1,
+    ];
+    let mut output = [0i16; 16];
+
+    c.bench_function("h264_idct_4x4_dispatch", |b| {
+        b.iter(|| {
+            idct_4x4(black_box(&coeffs), black_box(&mut output));
+        });
+    });
+}
+
 criterion_group!(
     codec_benches,
     bench_h264_sps_parse,
     bench_h264_pps_parse,
-    bench_h264_decoder_creation
+    bench_h264_decoder_creation,
+    bench_idct_4x4_scalar,
+    bench_idct_4x4_simd,
+    bench_idct_4x4_dispatch
 );
 
 criterion_main!(codec_benches);
