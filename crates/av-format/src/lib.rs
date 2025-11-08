@@ -11,4 +11,4 @@ pub mod mpegts;
 
 pub use mkv::{MkvDemuxer, MkvMuxer};
 pub use mp4::Mp4Demuxer;
-pub use mpegts::MpegTsDemuxer;
+pub use mpegts::{MpegTsDemuxer, MpegTsMuxer};

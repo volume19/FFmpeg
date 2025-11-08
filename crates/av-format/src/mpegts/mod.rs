@@ -5,8 +5,10 @@
 //! Phase 3: MPEG-TS muxer
 
 pub mod demuxer;
+pub mod muxer;
 
 pub use demuxer::MpegTsDemuxer;
+pub use muxer::MpegTsMuxer;
 
 /// MPEG-TS packet size (188 bytes)
 pub const TS_PACKET_SIZE: usize = 188;
