@@ -159,7 +159,8 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Intra prediction (9 modes for 4x4: vertical, horizontal, DC, diagonal-down-left, diagonal-down-right, vertical-right, horizontal-down, vertical-left, horizontal-up)
   - Intra prediction (4 modes for 16x16: vertical, horizontal, DC, plane)
   - CAVLC entropy decoding (coeff_token, level, total_zeros, run_before)
-  - Inverse transform (IDCT 4x4, Hadamard 4x4 for DC coefficients)
+  - Inverse transform (IDCT 4x4, Hadamard 4x4, IDCT 8x8 for High Profile)
+  - Improved Hadamard 4x4 with full 2D transform
   - Residual addition to prediction
   - Macroblock-to-frame assembly
   - Note: Deblocking filter pending SIMD optimization
@@ -207,6 +208,11 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Benchmarks: Scalar ~9.4ns, SIMD ~18.6ns (single block)
   - Note: SIMD overhead dominates for 4x4; benefits in batch processing
   - Infrastructure ready for larger transforms (8x8, 16x16)
+- ✅ **IDCT 8x8** (Scalar, High Profile)
+  - Simplified butterfly-based 2D IDCT
+  - Supports High Profile 8x8 transforms
+  - 4 comprehensive tests (DC-only, pattern)
+  - SIMD optimization pending
 - ✅ **Motion Compensation** (SSE2, NEON)
   - Half-pel horizontal interpolation (SSE2: _mm_avg_epu8, NEON: vrhaddq_u8)
   - Half-pel vertical interpolation (optimized for row-wise access)
