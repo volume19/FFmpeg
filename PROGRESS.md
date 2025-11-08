@@ -232,7 +232,15 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Keyframe flag support
   - VINT encoding (element IDs, sizes, values)
 
-**Commits**: 4956959 (MP4), 6d7a468 (AAC), 9a16404 (MKV demux), c8446fd (MKV mux), ec9bceb (MPEG-TS), dfb1f51 (FPS)
+**Commits**:
+- 4956959 (MP4 muxer)
+- 6d7a468 (AAC decoder)
+- 9a16404 (MKV demuxer)
+- c8446fd (MKV muxer)
+- ec9bceb (MPEG-TS demuxer)
+- dfb1f51 (FPS filter)
+- 3b950c4 (MPEG-TS muxer)
+- 74d7cd5 (HLS segmenter)
 
 ### Pending (Phase 3 Completion)
 
@@ -263,8 +271,16 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Fast-start (moov before mdat)
 
 - ✅ **Matroska Muxer** (MKV/WebM) - Complete implementation
-- ⏳ **MPEG-TS Muxer**
-- ⏳ **HLS Muxer** (segmenter + M3U8)
+- ✅ **MPEG-TS Muxer** (ISO/IEC 13818-1)
+  - PAT/PMT generation
+  - PES packet encapsulation with PTS/DTS
+  - Continuity counter management
+  - CRC32 for PSI tables
+- ✅ **HLS Segmenter** (RFC 8216)
+  - MPEG-TS segment generation
+  - M3U8 playlist generation
+  - Keyframe-aligned segmentation
+  - Sliding window playlist management
 
 #### Streaming
 - ⏳ DASH (MPD generation, fMP4 segments)
