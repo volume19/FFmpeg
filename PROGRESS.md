@@ -172,11 +172,36 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 - ⏳ **Deblocking Filter** (SSE2, NEON)
 - ⏳ **YUV Scaling** (AVX2, NEON)
 
+#### Additional Formats
+- ✅ **Matroska/MKV Demuxer** (IETF RFC 8794)
+  - EBML variable-length integer (VINT) parsing
+  - Element ID reading (preserves marker bit)
+  - Segment/Info/Tracks parsing
+  - Track metadata extraction (video/audio)
+  - Cluster and SimpleBlock parsing
+  - Codec ID mapping (H.264, HEVC, VP9, AAC, Opus)
+  - PTS calculation from cluster+block timecodes
+
+- ✅ **MPEG-TS Demuxer** (ISO/IEC 13818-1)
+  - TS packet parsing (188-byte packets)
+  - Sync byte detection and recovery
+  - PSI table parsing (PAT, PMT)
+  - Stream type identification
+  - PES packet assembly
+  - PTS/DTS timestamp parsing (33-bit, 90kHz)
+  - Multi-program support
+
+- ✅ **FPS Filter**
+  - Frame rate upconversion (e.g., 30fps → 60fps)
+  - Frame rate downconversion (e.g., 60fps → 30fps)
+  - PTS-based frame generation
+  - Nearest-frame selection
+
 #### Additional Codecs
 - ⏳ HEVC/H.265 decoder (Main profile)
 - ⏳ VP9 decoder (Profile 0)
 - ⏳ Opus decoder
-- ⏳ AAC decoder (AAC-LC)
+- ✅ **AAC Decoder** (AAC-LC) - AudioSpecificConfig parsing
 
 ---
 
@@ -196,7 +221,18 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Multi-track support
   - Async I/O with tokio
 
-**Commits**: 4956959
+#### Matroska Muxer
+- ✅ **MKV/WebM Writer** (IETF RFC 8794)
+  - EBML header generation (DocType, versions)
+  - Segment/Info writing (timecode scale, muxing app)
+  - Tracks element generation from StreamInfo
+  - Video/Audio track configuration
+  - Cluster management with configurable max duration
+  - SimpleBlock writing with relative timecodes
+  - Keyframe flag support
+  - VINT encoding (element IDs, sizes, values)
+
+**Commits**: 4956959 (MP4), 6d7a468 (AAC), 9a16404 (MKV demux), c8446fd (MKV mux), ec9bceb (MPEG-TS), dfb1f51 (FPS)
 
 ### Pending (Phase 3 Completion)
 
@@ -226,7 +262,7 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
   - Fragmented MP4 (fMP4) for DASH
   - Fast-start (moov before mdat)
 
-- ⏳ **Matroska Muxer** (MKV/WebM)
+- ✅ **Matroska Muxer** (MKV/WebM) - Complete implementation
 - ⏳ **MPEG-TS Muxer**
 - ⏳ **HLS Muxer** (segmenter + M3U8)
 
@@ -389,6 +425,6 @@ Memory-safe by design with unsafe only for SIMD intrinsics and hardware I/O.
 
 ---
 
-**Last Updated**: 2025-11-07
-**Status**: Phase 1 complete, Phase 2 substantial progress, Phase 3 foundation complete
-**Next Milestone**: Complete H.264 I-slice decoding
+**Last Updated**: 2025-11-08
+**Status**: Phase 1 complete, Phase 2 major progress (MKV, MPEG-TS, FPS filter), Phase 3 advancing (MKV muxer)
+**Next Milestone**: H.264 I-slice decoding or SIMD kernels
