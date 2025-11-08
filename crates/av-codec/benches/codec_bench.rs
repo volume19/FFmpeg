@@ -4,7 +4,8 @@
 
 use av_codec::h264::{H264Decoder, Sps, Pps};
 use av_codec::h264::transform::{idct_4x4, idct_4x4_scalar, idct_8x8};
-use av_codec::h264::simd::{idct_4x4_simd, idct_8x8_simd, interpolate_half_horizontal_simd, interpolate_half_vertical_simd};
+use av_codec::h264::simd::{idct_4x4_simd, idct_8x8_simd, interpolate_half_horizontal_simd, interpolate_half_vertical_simd, deblock_luma_edge_vertical_simd};
+use av_codec::h264::deblock::{deblock_luma_edge_vertical, calc_alpha_beta, calc_tc0};
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 
 fn bench_h264_sps_parse(c: &mut Criterion) {
@@ -154,6 +155,66 @@ fn bench_idct_8x8_simd(c: &mut Criterion) {
     });
 }
 
+fn bench_deblock_luma_scalar(c: &mut Criterion) {
+    // 16x16 luma block with edges
+    let mut samples = vec![0u8; 32 * 32];
+
+    // Set up gradient pattern
+    for y in 0..32 {
+        for x in 0..32 {
+            samples[y * 32 + x] = ((x + y) * 2).min(255) as u8;
+        }
+    }
+
+    let edge_offset = 16;
+    let stride = 32;
+    let (alpha, beta) = calc_alpha_beta(26);
+    let tc0 = calc_tc0(26, 4);
+
+    c.bench_function("h264_deblock_luma_scalar", |b| {
+        b.iter(|| {
+            let _ = deblock_luma_edge_vertical(
+                black_box(&mut samples),
+                black_box(edge_offset),
+                black_box(stride),
+                black_box(alpha),
+                black_box(beta),
+                black_box(tc0),
+                black_box(4),
+            );
+        });
+    });
+}
+
+fn bench_deblock_luma_simd(c: &mut Criterion) {
+    let mut samples = vec![0u8; 32 * 32];
+
+    for y in 0..32 {
+        for x in 0..32 {
+            samples[y * 32 + x] = ((x + y) * 2).min(255) as u8;
+        }
+    }
+
+    let edge_offset = 16;
+    let stride = 32;
+    let (alpha, beta) = calc_alpha_beta(26);
+    let tc0 = calc_tc0(26, 4);
+
+    c.bench_function("h264_deblock_luma_simd", |b| {
+        b.iter(|| {
+            deblock_luma_edge_vertical_simd(
+                black_box(&mut samples),
+                black_box(edge_offset),
+                black_box(stride),
+                black_box(alpha),
+                black_box(beta),
+                black_box(tc0),
+                black_box(4),
+            );
+        });
+    });
+}
+
 criterion_group!(
     codec_benches,
     bench_h264_sps_parse,
@@ -165,7 +226,9 @@ criterion_group!(
     bench_idct_8x8_scalar,
     bench_idct_8x8_simd,
     bench_motion_comp_horizontal_simd,
-    bench_motion_comp_vertical_simd
+    bench_motion_comp_vertical_simd,
+    bench_deblock_luma_scalar,
+    bench_deblock_luma_simd
 );
 
 criterion_main!(codec_benches);
