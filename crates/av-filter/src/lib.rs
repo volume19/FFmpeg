@@ -5,10 +5,12 @@
 //! Phase 2: Additional filters (crop, pad, fps, volume, aresample)
 
 pub mod crop;
+pub mod fps;
 pub mod pad;
 pub mod scale;
 
 pub use crop::CropFilter;
+pub use fps::FpsFilter;
 pub use pad::PadFilter;
 pub use scale::ScaleFilter;
 
