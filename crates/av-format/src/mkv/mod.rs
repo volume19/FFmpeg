@@ -4,10 +4,12 @@
 //! Phase 2: MKV demuxer
 //! Phase 3: MKV muxer
 
-pub mod ebml;
 pub mod demuxer;
+pub mod ebml;
+pub mod muxer;
 
 pub use demuxer::MkvDemuxer;
+pub use muxer::MkvMuxer;
 
 /// Matroska Element IDs (EBML)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -8,5 +8,5 @@
 pub mod mkv;
 pub mod mp4;
 
-pub use mkv::MkvDemuxer;
+pub use mkv::{MkvDemuxer, MkvMuxer};
 pub use mp4::Mp4Demuxer;
