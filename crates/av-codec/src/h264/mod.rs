@@ -22,6 +22,7 @@ pub mod inter_pred;
 pub mod direct_mode;
 pub mod rplr;
 pub mod qp;
+pub mod poc;
 
 pub use decoder::H264Decoder;
 pub use parser::{Sps, Pps};
