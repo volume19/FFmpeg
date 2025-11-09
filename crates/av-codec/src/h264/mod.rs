@@ -20,6 +20,7 @@ pub mod weighted_pred;
 pub mod dpb;
 pub mod inter_pred;
 pub mod direct_mode;
+pub mod rplr;
 
 pub use decoder::H264Decoder;
 pub use parser::{Sps, Pps};
