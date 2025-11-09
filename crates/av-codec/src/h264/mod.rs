@@ -24,6 +24,8 @@ pub mod rplr;
 pub mod qp;
 pub mod poc;
 pub mod scaling;
+pub mod intra_8x8;
+pub mod intra_chroma;
 
 pub use decoder::H264Decoder;
 pub use parser::{Sps, Pps};
