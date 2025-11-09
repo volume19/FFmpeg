@@ -23,6 +23,7 @@ pub mod direct_mode;
 pub mod rplr;
 pub mod qp;
 pub mod poc;
+pub mod scaling;
 
 pub use decoder::H264Decoder;
 pub use parser::{Sps, Pps};
