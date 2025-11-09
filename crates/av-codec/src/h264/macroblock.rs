@@ -338,34 +338,34 @@ impl CabacMbContext {
         // Using simplified initialization - full implementation would use
         // init tables from spec (Table 9-12 through 9-36)
         for i in 0..11 {
-            ctx.mb_type_i[i] = CabacContext::init(i, slice_qp);
+            ctx.mb_type_i[i] = CabacContext::init_simple(i, slice_qp);
         }
         for i in 0..14 {
-            ctx.mb_type_p[i] = CabacContext::init(i, slice_qp);
+            ctx.mb_type_p[i] = CabacContext::init_simple(i, slice_qp);
         }
         for i in 0..27 {
-            ctx.mb_type_b[i] = CabacContext::init(i, slice_qp);
+            ctx.mb_type_b[i] = CabacContext::init_simple(i, slice_qp);
         }
         for i in 0..4 {
-            ctx.coded_block_pattern[i] = CabacContext::init(i, slice_qp);
+            ctx.coded_block_pattern[i] = CabacContext::init_simple(i, slice_qp);
         }
         for list in 0..2 {
             for i in 0..7 {
-                ctx.mvd[list][i] = CabacContext::init(i, slice_qp);
+                ctx.mvd[list][i] = CabacContext::init_simple(i, slice_qp);
             }
             for i in 0..4 {
-                ctx.ref_idx[list][i] = CabacContext::init(i, slice_qp);
+                ctx.ref_idx[list][i] = CabacContext::init_simple(i, slice_qp);
             }
         }
         for i in 0..3 {
-            ctx.coded_block_flag[i] = CabacContext::init(i, slice_qp);
+            ctx.coded_block_flag[i] = CabacContext::init_simple(i, slice_qp);
         }
         for i in 0..15 {
-            ctx.significant_coeff_flag[i] = CabacContext::init(i, slice_qp);
-            ctx.last_significant_coeff_flag[i] = CabacContext::init(i, slice_qp);
+            ctx.significant_coeff_flag[i] = CabacContext::init_simple(i, slice_qp);
+            ctx.last_significant_coeff_flag[i] = CabacContext::init_simple(i, slice_qp);
         }
         for i in 0..10 {
-            ctx.coeff_abs_level_minus1[i] = CabacContext::init(i, slice_qp);
+            ctx.coeff_abs_level_minus1[i] = CabacContext::init_simple(i, slice_qp);
         }
 
         ctx
