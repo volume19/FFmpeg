@@ -28,6 +28,7 @@ pub mod intra_8x8;
 pub mod intra_chroma;
 pub mod slice_groups;
 pub mod ref_pic_list;
+pub mod reconstruct;
 
 pub use decoder::H264Decoder;
 pub use parser::{Sps, Pps};
