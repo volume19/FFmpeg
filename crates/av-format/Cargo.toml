@@ -21,3 +21,8 @@ tokio = { workspace = true, features = ["fs"] }
 [dev-dependencies]
 tokio.workspace = true
 hex = "0.4"
+criterion.workspace = true
+
+[[bench]]
+name = "format_bench"
+harness = false
