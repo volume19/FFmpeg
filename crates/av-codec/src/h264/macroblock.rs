@@ -850,8 +850,7 @@ pub fn decode_p_macroblock(
     mb_x: usize,
     mb_y: usize,
 ) -> Result<MacroblockData> {
-    use super::motion::{parse_mvd, predict_motion_vector, MotionVector};
-    use super::predict::predict_inter;
+    // Motion and prediction imports moved to functions that actually use them
 
     match mb_type {
         PMbType::PSkip => {
@@ -917,7 +916,7 @@ fn decode_p_16x16_macroblock(
     mb_x: usize,
     mb_y: usize,
 ) -> Result<MacroblockData> {
-    use super::motion::{parse_mvd, predict_motion_vector, MotionVector};
+    use super::motion::{parse_mvd, predict_motion_vector};
     use super::predict::predict_inter;
 
     // Parse motion vector difference

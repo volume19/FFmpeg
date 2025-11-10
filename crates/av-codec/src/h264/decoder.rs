@@ -402,8 +402,8 @@ impl H264Decoder {
         let uv_size = (width / 2) * (height / 2);
 
         let mut y_data = vec![128u8; y_size];
-        let mut u_data = vec![128u8; uv_size];
-        let mut v_data = vec![128u8; uv_size];
+        let u_data = vec![128u8; uv_size];
+        let v_data = vec![128u8; uv_size];
 
         // Get reference frames for List 0 (forward) and List 1 (backward)
         // Simplified: Use available reference frames, with fallback

@@ -195,7 +195,8 @@ mod tests {
         #[cfg(target_arch = "x86_64")]
         {
             // Most modern x86_64 CPUs have SSE2
-            assert!(features.sse2 || !features.sse2); // Always passes, just runs detection
+            // Just verify detection runs without panicking
+            let _ = features.sse2;
         }
 
         #[cfg(target_arch = "aarch64")]

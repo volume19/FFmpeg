@@ -49,7 +49,7 @@ impl TimeBase {
         let ratio = self.as_ratio().checked_div(&target.as_ratio())?;
         let value_ratio = Ratio::from_integer(value);
         let result = value_ratio.checked_mul(&ratio)?;
-        result.to_integer().try_into().ok()
+        Some(result.to_integer())
     }
 }
 

@@ -6,7 +6,7 @@
 //! Scaling lists provide custom quantization matrices for High Profile
 //! to achieve better rate-distortion performance.
 
-use av_core::Result;
+// av_core::Result not yet needed in current implementation
 
 /// Zig-zag scan order for 4x4 blocks
 ///

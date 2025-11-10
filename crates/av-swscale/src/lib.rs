@@ -202,6 +202,7 @@ impl Scaler {
 }
 
 /// Scale a single plane using nearest neighbor
+#[allow(clippy::too_many_arguments)]
 fn scale_plane_nearest(
     src: &[u8],
     src_stride: usize,
@@ -226,6 +227,7 @@ fn scale_plane_nearest(
 }
 
 /// Scale a single plane using bilinear interpolation
+#[allow(clippy::too_many_arguments)]
 fn scale_plane_bilinear(
     src: &[u8],
     src_stride: usize,

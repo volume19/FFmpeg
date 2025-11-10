@@ -5,7 +5,7 @@
 //! Weighted prediction improves compression efficiency by applying weights
 //! and offsets to predicted samples, useful for fade transitions and lighting changes.
 
-use av_core::Result;
+// av_core::Result not yet needed in current implementation
 
 /// Weighted prediction parameters
 ///

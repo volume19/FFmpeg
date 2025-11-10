@@ -77,7 +77,7 @@ mod tests {
         assert_eq!(packet.data, data);
         assert_eq!(packet.stream_index, 0);
         assert_eq!(packet.pts, None);
-        assert_eq!(packet.keyframe, false);
+        assert!(!packet.keyframe);
     }
 
     #[test]

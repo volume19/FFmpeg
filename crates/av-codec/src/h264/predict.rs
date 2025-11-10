@@ -76,10 +76,10 @@ pub fn predict_intra_4x4(
         Intra4x4Mode::Horizontal => {
             // Copy left column horizontally
             for col in 0..4 {
-                output[0 * 4 + col] = i as u8;
-                output[1 * 4 + col] = j as u8;
-                output[2 * 4 + col] = k as u8;
-                output[3 * 4 + col] = l as u8;
+                output[col] = i as u8;  // Row 0
+                output[4 + col] = j as u8;  // Row 1
+                output[8 + col] = k as u8;  // Row 2
+                output[12 + col] = l as u8;  // Row 3
             }
         }
         Intra4x4Mode::Dc => {

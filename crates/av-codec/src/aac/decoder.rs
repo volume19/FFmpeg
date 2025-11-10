@@ -9,7 +9,7 @@ use av_core::{Error, Frame, Result, SampleFormat};
 /// AAC decoder state
 pub struct AacDecoder {
     config: Option<AudioSpecificConfig>,
-    sample_buffer: Vec<f32>,
+    _sample_buffer: Vec<f32>, // Reserved for Phase 2 implementation
 }
 
 impl AacDecoder {
@@ -17,7 +17,7 @@ impl AacDecoder {
     pub fn new() -> Self {
         Self {
             config: None,
-            sample_buffer: Vec::new(),
+            _sample_buffer: Vec::new(),
         }
     }
 
@@ -43,7 +43,7 @@ impl AacDecoder {
     /// - IMDCT (windowing, overlap-add)
     ///
     /// For now, returns silence (stub implementation)
-    pub fn decode(&mut self, data: &[u8]) -> Result<Frame> {
+    pub fn decode(&mut self, _data: &[u8]) -> Result<Frame> {
         let config = self
             .config
             .as_ref()
