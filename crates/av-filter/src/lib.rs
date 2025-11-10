@@ -5,14 +5,18 @@
 //! Phase 2: Additional filters (crop, pad, fps, volume, aresample)
 
 pub mod crop;
+pub mod deinterlace;
 pub mod fps;
 pub mod pad;
 pub mod scale;
+pub mod transpose;
 
 pub use crop::CropFilter;
+pub use deinterlace::DeinterlaceFilter;
 pub use fps::FpsFilter;
 pub use pad::PadFilter;
 pub use scale::ScaleFilter;
+pub use transpose::TransposeFilter;
 
 use av_core::{Frame, Result};
 
