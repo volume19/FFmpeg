@@ -4,9 +4,11 @@
 //! Phase 2: AAC-LC decoder (Low Complexity)
 //! Phase 3: AAC-LC encoder
 
+pub mod adts;
 pub mod decoder;
 pub mod parser;
 
+pub use adts::{AdtsHeader, find_sync};
 pub use decoder::AacDecoder;
 pub use parser::AudioSpecificConfig;
 
