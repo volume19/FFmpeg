@@ -5,7 +5,10 @@
 //! Phase 3: AAC-LC encoder
 
 pub mod adts;
+pub mod bitstream;
 pub mod decoder;
+pub mod huffman;
+pub mod imdct;
 pub mod parser;
 
 pub use adts::{AdtsHeader, find_sync};
