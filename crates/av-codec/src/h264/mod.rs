@@ -5,6 +5,7 @@
 //! Phase 2: Main/High profiles, B-frames, CABAC
 
 pub mod nal;
+pub mod nal_stream;
 pub mod parser;
 pub mod decoder;
 pub mod slice;
