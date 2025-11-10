@@ -1,0 +1,83 @@
+[package]
+name = "rav-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+
+[dependencies.av-core]
+path = "../crates/av-core"
+
+[dependencies.av-codec]
+path = "../crates/av-codec"
+
+[dependencies.av-format]
+path = "../crates/av-format"
+
+[dependencies.av-io]
+path = "../crates/av-io"
+
+# H.264 decoder fuzzing
+[[bin]]
+name = "h264_sps"
+path = "fuzz_targets/h264_sps.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "h264_pps"
+path = "fuzz_targets/h264_pps.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "h264_nal"
+path = "fuzz_targets/h264_nal.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "h264_slice"
+path = "fuzz_targets/h264_slice.rs"
+test = false
+doc = false
+bench = false
+
+# AAC decoder fuzzing
+[[bin]]
+name = "aac_config"
+path = "fuzz_targets/aac_config.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "aac_decode"
+path = "fuzz_targets/aac_decode.rs"
+test = false
+doc = false
+bench = false
+
+# MP4 demuxer fuzzing
+[[bin]]
+name = "mp4_box_header"
+path = "fuzz_targets/mp4_box_header.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "mp4_demux"
+path = "fuzz_targets/mp4_demux.rs"
+test = false
+doc = false
+bench = false

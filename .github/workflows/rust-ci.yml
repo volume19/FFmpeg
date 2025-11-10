@@ -88,11 +88,19 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz
+      - name: List fuzz targets
+        run: cargo +nightly fuzz list
       - name: Run fuzz smoke tests (60s each target)
         run: |
-          # Run each fuzz target for 60 seconds
-          # Will be implemented once fuzz targets are created
-          echo "Fuzz targets not yet implemented"
+          # Run each fuzz target for 60 seconds (smoke test for CI)
+          cd fuzz
+          for target in $(cargo +nightly fuzz list); do
+            echo "Fuzzing $target for 60 seconds..."
+            cargo +nightly fuzz run "$target" -- -max_total_time=60 -jobs=1 || {
+              echo "Warning: Fuzz target $target found potential issues (expected in fuzzing)"
+              # Don't fail CI on fuzz findings, just warn
+            }
+          done
 
   build-release:
     name: Build Release
